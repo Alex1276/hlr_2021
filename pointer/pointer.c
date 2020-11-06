@@ -10,36 +10,36 @@ void basic_pointer (int x)
 	adresse_von_x = &x;
 
 	printf("Der Wert von x ist: %d\n", x);
-	printf("Die Adresse von x ist %p\n", adresse_von_x);
-	printf("Adresse von x mittels adresse_von_x %p\n", NULL /* TODO */);
-	printf("Wert von x mittels adresse_von_x: %d\n", );
+	printf("Die Adresse von x ist %p\n", &x);
+	printf("Adresse von x mittels adresse_von_x %p\n", adresse_von_x);
+	printf("Wert von x mittels adresse_von_x: %d\n", *adresse_von_x);
 }
 
 void basic_pointer2 (int x)
 {
-	int* adresse_von_x = NULL /* TODO */;
+	int* adresse_von_x = &x /* TODO */;
 	// Eine andere Variable y erhaelt den Wert von x
-	int y = 0 /* TODO */;
+	int y = *adresse_von_x /* TODO */;
 
-	printf("Der Wert von y ist %d\n", 0 /* TODO */);
+	printf("Der Wert von y ist %d\n", y /* TODO */);
 
 	// Zuweisung über die Adresse
 	x = 10;
 	y = *adresse_von_x;
 
-	printf("Der Wert von y ist %d\n", 0 /* TODO */);
+	printf("Der Wert von y ist %d\n", y /* TODO */);
 }
 
 void basic_pointer_changeValue (int x)
 {
-	int* adresse_von_x = NULL /* TODO */;
+	int* adresse_von_x = &x /* TODO */;
 
 	// Ändern Sie den Wert von x zu 10
-	TODO = 10;
-	printf("x = %d\n", 0 /* TODO */);
+	/*TODO*/ *adresse_von_x = 10;
+	printf("x = %d\n", x /* TODO */);
 
 	// Ändern Sie den Wert von x über seine ADRESSE
-	TODO = 20;
+	/*TODO*/ *adresse_von_x = 20;
 	printf("x = %d\n", x);
 }
 
@@ -47,7 +47,7 @@ void basic_pointer_changeValue (int x)
 void call_by_reference (int* x)
 {
 	// Ändern Sie den Wert, der an der Adresse steht, die im Wert x gespeichert ist
-	TODO = 200;
+	/*TODO*/ *x = 200;
 }
 
 int main (void)
