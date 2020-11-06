@@ -1,0 +1,13 @@
+Die Bearbeitungszeit bitte in ganzen Stunden angeben (aufrunden).
+In den restlichen Zeilen jeweils ein X in der zutreffenden Spalte setzen.
+
+Bearbeitungszeit:  3h30min
+Schwierigkeit:     [ ] zu leicht         [X] genau richtig     [ ] zu schwer
+Lehrreich:         [ ] wenig             [ ] etwas             [X] sehr
+Verständlichkeit:  [ ] großteils unklar  [X] teilweise unklar  [ ] verständlich
+
+Kommentar:
+Zeitaufwand zu groß? Wo sind Sie nicht weiter gekommen? Makefile Aufgabe hat 90min gedauert
+Was war zu schwer oder unverständlich? Makefiles im allgemeinen
+Was könnten wir verbessern? Mehr Kontext zu Makefiles
+Was hat Ihnen besonders gut gefallen? *nix basierte Betriebssyteme
