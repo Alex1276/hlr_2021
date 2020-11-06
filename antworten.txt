@@ -1,0 +1,11 @@
+Frage:Mit which können Sie sich den Pfad einer Anwendung anzeigen lassen. Warum funktioniert das nicht für das Kommando cd? (Tipp:man bash)
+
+Antwort: cd ist ein built-in command von bash, d.h. cd ist nicht anderswo gespeichert und es kann auch kein Pfad anderswo hin ausgegeben werden, daher gibt which cd nichts aus.
+
+Frage:Was fällt Ihnen bezüglich der drei Größen auf?
+
+Antwort: archiv.tar ist mit 260KiB etwas größer als archiv (3KiB) und zufall (256 KiB) zusammen.
+
+Frage:Ist es möglich, ein gepacktes Archiv (.tar.gz) mit einem Aufruf vontarzu erzeugen? Wie hätte dieser Aufruf lauten müssen?
+
+Antwort: Der Aufruf tar cfz archiv.tar.gz archiv ist notwendig um archiv gleichzeitig auch noch zu zippen.
