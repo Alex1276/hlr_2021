@@ -1,0 +1,21 @@
+Zeile 78
+Es muss ein Speicher der größe double * 2 allokiert werden, um 2 Matrizen zu speichern
+
+
+Zeile 96
+Die beiden Matrizen sind von der Größe (N + 1) * (n + 1). Es wird allerdings nur Speicher für zwei (N + 1) * (N - 1) allokiert.
+
+Zeile 165-169
+Der Speicher des Pointer Matrix wird vor den Speichern der Pointer Matrix[0] und Matrix[1] deallokiert.
+Zudem muss der Speicher von Pointer M noch deallokiert werden.
+
+
+Zeile 230
+die Indizes wurden vertauscht. Korrekt: - Matrix[m2][i][j-1] + 4 * Matrix[m2][i][j] -
+
+
+
+askparams.c
+Zeile 198
+argV[4] muss gescannt werden
+valgrind gab an, dass in Zeile 198 eine Adresse nicht stack'd, malloc'd oder free'd wurde

@@ -1,0 +1,54 @@
+b 10
+-> Breakpoint 1 at 0x742: file simple.c, line 10.
+print buf
+-> $1 = {9, 0, 1814038112, 32667, 1960588616, 32766}
+print buf[2]
+-> $2 = 1814038112
+next
+print buf
+-> $1 = {1, 1, 2, 3, 4, 5}
+print buf[2]
+-> $2 = 2
+ptype buf
+-> type = int [6]
+b 17
+-> Breakpoint 2 at 0x555b5f3f779e: file simple.c, line 17.
+continue
+-> Continuing.
+   Breakpoint 2, mistake2 () at simple.c:19
+ptype buf
+-> type = int *
+continue
+-> Program received signal SIGSEGV, Segmentation fault.
+   0x0000555b5f3f77da in mistake3 () at simple.c:30
+   30    buf[0] = 3;
+list
+-> 25  mistake3 (void)
+   26  {
+   27    /* In dieser Funktion darf kein Speicher direkt allokiert werden. */
+   28    int mistake2_ = 0;
+   29    int *buf = (int *) &mistake2;
+   30    buf[0] = 3;
+   31    return buf;
+   32  }
+   33
+   34  int *
+info frames
+-> Stack level 0, frame at 0x7ffe74dc3500:
+    rip = 0x555b5f3f77da in mistake3 (simple.c:30); saved rip = 0x555b5f3f7852
+    called by frame at 0x7ffe74dc3540
+    source language c.
+    Arglist at 0x7ffe74dc34f0, args: 
+    Locals at 0x7ffe74dc34f0, Previous frame's sp is 0x7ffe74dc3500
+    Saved registers:
+     rbp at 0x7ffe74dc34f0, rip at 0x7ffe74dc34f8
+frame 1
+-> #1  0x0000555b5f3f7852 in main () at simple.c:47
+   47    int *p[4] = { &mistake1 ()[1], &mistake2 ()[1], mistake3 (), mistake4 () };
+print p
+-> $5 = {0x4, 0x555b60526264, 0x555b5f3f78f0 <__libc_csu_init>, 
+   0x555b5f3f7630 <_start>}
+call mistake4
+-> $6 = {int *(void)} 0x555b5f3f77e6 <mistake4>
+   (gdb) 
+   $7 = {int *(void)} 0x555b5f3f77e6 <mistake4>

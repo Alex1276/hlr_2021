@@ -1,0 +1,15 @@
+Zeile 13
+Es wird ein lokales Array zurückgegeben, was nicht möglich ist. Es muss ein Pointer zu einem allokierten speicher zurückgegeben werden.
+
+Zeile 19
+der allokierte Speicher muss von der größe int * 2 sein. Zudem muss buf[1] beschrieben werden, da später &mistake2[1] aufgerufen wird.
+
+Zeile 28 - 29
+misteake2_ ist eine nicht genutzte variable. Um den *buf pointer zu initialisieren muss mistake2() aufgerufen werden. Somit wird auch kein neuer Speicher allokiert.
+
+Zeile 37-39
+Es muss speicher der Größe int allokiert werden. Zudem muss buf[0] beschrieben werden, da später durch mistake4 der Pointer an die erste stelle aufgerufen wird. 
+Der Speicher von buf darf nicht mit free freigegeben werden.
+
+Zeile 56
+Die allokierten speicher an den Steller der durch die mistake funktionen zurückgegebenen Pointern müssen gefreed werden. Bei p[0] und p[1] muss noch 1 abgezogen werden, da die dort gespeicherten pointer auf die zweite Stelle der jeweiligen Arrays zeigen.
