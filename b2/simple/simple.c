@@ -34,7 +34,7 @@ mistake3 (void)
 {
   /* In dieser Funktion darf kein Speicher direkt allokiert werden. */
   //int mistake2_ = 0;
-  int *buf = mistake2();
+  int *buf = (int *) mistake2();
   buf[0] = 3;
   return buf;
 }
@@ -42,8 +42,8 @@ mistake3 (void)
 int *
 mistake4 (void) // DONE
 { 
-  int *buf = malloc (sizeof (int));
-  buf[0] = 4;
+  int *buf = (int *) malloc (sizeof (int) * 5);
+  buf[4] = 4;
   //free (buf);
   return buf;
 }
@@ -57,7 +57,7 @@ main (void)
   printf ("1: %d\n", *p[0]);
   printf ("2: %d\n", *p[1]); // DONE
   printf ("3: %d\n", *p[2]);
-  printf ("4: %d\n", *p[3]); // DONE
+  printf ("4: %d\n", *(p[3]+4)); // DONE
 
   /* mhh muss hier noch etwas gefreed werden? */
   /* Fügen sie hier die korrekten aufrufe von free() ein */

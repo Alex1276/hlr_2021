@@ -1,0 +1,2 @@
+#!/bin/sh
+echo $(hostname --short) ": " $(date +'%D %T.%4N')

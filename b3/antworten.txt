@@ -1,0 +1,26 @@
+Aufgabe 1
+
+1. Batch Queuing bedeutet Programme bzw. Jobs in eine Warteschlange einzureihen, die von einem 	Scheduler nach gesetzter Priorität ausgeführt werden
+2. Ein Batch-Queueing-System ermöglicht das Teilen von Ressourcen zwischen mehreren Benutzern auf einem System und versucht die Auslastung des Systems zu maximieren ohne das einzelne jobs zu sehr vernachlässigt werden.
+3. Portable Batch System, Slurm Workload Manager, OpenLava
+4. Auf dem Cluster wird Slurm Workload Manager verwendet
+5. mit dem sbatch Befehlt lassen sich batch scripte an Slurm senden.
+6. squeue
+7. als interaktive grafische oberfläche kann man mit sview deutlich schneller und einfacher die laufenden jobs analysieren und deren status erkennen als mit sbatch
+8. scancel <jobid>
+9. Ja, beispielsweise auf dem Login Knoten sind viele Nutzer gleichzeitig drauf, wenn sie sich anmelden.
+10. sstat -j <jobid>
+11. sched/backfill, which performs backfill scheduling, and sched/builtin, which attempts to schedule jobs in a strict priority order within each partition/queue
+12. salloc -p west - w west7
+    ssh west7
+    hostname
+    > west7
+13. 6 Stunden
+14. sprio
+    
+15. abu, amd, magny, nehalem, west. 
+    -w <nodename>
+
+Aufgabe 2
+1. Die verschiedenen Ausgaben werden nicht chronologisch in die timescript.out Datei geschrieben. Es kommt vor, dass einzelne Ausgaben von einem Knoten in die timescript.out Datei geschrieben werden vor der Ausgabe eines anderen Knoten, obwohl diese Ausgabe vorher fertig wurde. Dies könnte an dem Login-Knoten liegen, der die verschiedenen writes der anderen Knoten nicht nur nach first-come-first-serve ausführt, sondern nach der komplexeren Logik seines Schedulers.
+2. Nicht möglich, da das script auf jeden Knoten separat läuft und eine eigene timescript.out erstellen würde.

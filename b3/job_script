@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#SBATCH -p west
+#SBATCH -n 16
+#SBATCH -N 4
+#SBATCH --output=timescript.out
+
+srun ./timescript >> timescript.out

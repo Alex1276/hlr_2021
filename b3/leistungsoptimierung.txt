@@ -1,0 +1,148 @@
+time ./partdiff-seq 1 2 64 1 2 10240 ohne Codeanpassungen:
+
+CFLAG     real time
+-O0       2m15.962s
+-O1       1m28.566s
+-O2       0m49.871s
+-O3       0m47.608s
+
+./partdiff-seq 1 2 64 2 2 5120 ohne Codeanpassungen:
+
+CFLAG     real time
+-O0       2m26.803s
+-O1       2m5.013s
+-O2       2m4.167s
+-O3       1m38.530s
+
+
+gprof für ./partdiff-seq 1 2 64 1 2 10240 
+
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls   s/call   s/call  name
+ 92.44     86.54    86.54        1    86.54    93.21  calculate
+  7.13     93.21     6.67 2758256640     0.00     0.00  getResiduum
+  0.49     93.67     0.46        1     0.46     0.46  initMatrices
+  0.00     93.67     0.00        4     0.00     0.00  allocateMemory
+  0.00     93.67     0.00        1     0.00     0.00  AskParams
+  0.00     93.67     0.00        1     0.00     0.00  DisplayMatrix
+  0.00     93.67     0.00        1     0.00     0.00  allocateMatrices
+  0.00     93.67     0.00        1     0.00     0.00  displayStatistics
+  0.00     93.67     0.00        1     0.00     0.00  freeMatrices
+  0.00     93.67     0.00        1     0.00     0.00  initVariables
+
+gprof für ./partdiff-seq 1 2 64 2 2 5120
+
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls   s/call   s/call  name
+ 85.80     45.27    45.27        1    45.27    52.47  calculate
+ 13.65     52.47     7.20 1379128320     0.00     0.00  getResiduum
+  0.62     52.79     0.33        1     0.33     0.33  initMatrices
+  0.00     52.79     0.00        4     0.00     0.00  allocateMemory
+  0.00     52.79     0.00        1     0.00     0.00  AskParams
+  0.00     52.79     0.00        1     0.00     0.00  DisplayMatrix
+  0.00     52.79     0.00        1     0.00     0.00  allocateMatrices
+  0.00     52.79     0.00        1     0.00     0.00  displayStatistics
+  0.00     52.79     0.00        1     0.00     0.00  freeMatrices
+  0.00     52.79     0.00        1     0.00     0.00  initVariables
+
+
+die calculate Funktion benötigt mit Abstand am meisten Zeit
+getResiduum Funktion wird sehr oft aufgerufen
+
+
+Performance counter stats for './partdiff-seq 1 2 64 1 2 10240':
+
+     135920.749062      task-clock (msec)         #    0.999 CPUs utilized // 1 CPU benutzt (da ein Knoten) (nur 0.999 wegen background tasks)
+            11,365      context-switches          #    0.084 K/sec // Unterbrechung der Berechnung des Tasks zu gunsten eines anderen
+                 0      cpu-migrations            #    0.000 K/sec // Wenn der Task auf einer anderen CPU weiter gerechnet wird, nach einer Unterbrechung und wir haben nur eine CPU daher passiert uns das nicht
+             1,132      page-faults               #    0.008 K/sec // fehler, wobei ein programm versucht auf arbeitsspeicher zuzugreifen, der ihm nicht allokiert ist
+   361,762,892,756      cycles                    #    2.662 GHz                      (83.34%) // Anzahl an Zyklen die gerechnet wurde (und nochmal pro Sekunde)
+   170,830,744,501      stalled-cycles-frontend   #   47.22% frontend cycles idle     (83.33%) // Zeit, wo die CPU gerade kein Befehl für fetch oder decode holen kann, da uaf andere Teile des Systems gewartet wird
+    25,899,900,675      stalled-cycles-backend    #    7.16% backend cycles idle      (66.67%) // Zeit, wo die CPU gerade kein Befehl ausführen kann, da auf andere Teile des Systems gewartet wird
+   615,567,264,073      instructions              #    1.70  insn per cycle // instruktionien die total ausgeführt wurden (und dann nochmal pro sekunde)
+                                                  #    0.28  stalled cycles per insn  (83.35%)
+    49,701,972,576      branches                  #  365.669 M/sec                    (83.33%) // sprünge im Quellcode
+         8,669,149      branch-misses             #    0.02% of all branches          (83.33%) // fehlgeschlagene branch predictions 
+
+     136.023518829 seconds time elapsed // laufzeit des Programms
+
+
+task-clock: 
+
+1. Optimierung mit -O0 flag compiled.
+z. 227-230
+Erst über die Columns dann über Rows loopen. Gleiche Reihenfolge in der auch der Speicher allokiert wird.
+
+time ./partdiff-seq 1 2 64 1 2 10240 
+real 1m55.104s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real 2m27.448s
+
+
+2. Optimierung mit -O0 flag compiled.
+variable korrektur entfernt
+
+time ./partdiff-seq 1 2 64 1 2 10240 
+real 1m52.517s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real 2m23.919s
+
+
+3. Optimierung mit -O0 flag compiled.
+Matrix[m1] und Matrix[m2] vor den beiden loops gecached
+
+time ./partdiff-seq 1 2 64 1 2 10240 
+real 1m37.625s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real 2m16.622s
+
+
+4. Optimierung mit -O0 flag compiled.
+matrix1[i], matrix2[i-1], matrix2[i], matrix2[i+1] gecached und in z. 238 die aufrufe optimiert.
+
+time ./partdiff-seq 1 2 64 1 2 10240
+real 1m27.412s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real 2m9.105s
+
+
+5. Optimierung mit -O0 flag compiled.
+in calculate über if anweisung zwischen den beiden störfunktionen unterscheiden, und die getResiduum Funktion inline eingebaut
+
+time ./partdiff-seq 1 2 64 1 2 10240
+real 0m42.438s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real 1m47.108s
+
+
+6. Optimierung mit -O0 flag compiled.
+Absoluten Wert von Residuum über fabs() berechnet
+
+time ./partdiff-seq 1 2 64 1 2 10240
+real 0m40.504s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real 1m45.818s
+
+7. Optimierung mit -O0 flag compiled.
+Vor den loops gecheck, was unsere Abbruchsbedingung ist.
+
+time ./partdiff-seq 1 2 64 1 2 10240
+real	0m35,083s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real	1m45,728s
+
+8. Optimierung mit -O3 flag compiled.
+
+time ./partdiff-seq 1 2 64 1 2 10240
+real	0m4,691s
+
+time ./partdiff-seq 1 2 64 2 2 5120
+real	0m50,914s
+
