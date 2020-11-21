@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -p west
+#SBATCH -p abu
 #SBATCH -n 16
 #SBATCH -N 4
 #SBATCH --output=timescript.out
