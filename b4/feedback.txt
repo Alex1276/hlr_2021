@@ -1,0 +1,17 @@
+Die Bearbeitungszeit bitte in ganzen Stunden angeben (aufrunden).
+In den restlichen Zeilen jeweils ein X in der zutreffenden Spalte setzen.
+
+Bearbeitungszeit:  4h
+Schwierigkeit:     [x] zu leicht         [ ] genau richtig     [ ] zu schwer
+Lehrreich:         [ ] wenig             [x] etwas             [ ] sehr
+Verständlichkeit:  [x] großteils unklar  [ ] teilweise unklar  [ ] verständlich
+
+Kommentar: 
+Zeitaufwand zu groß? Wo sind Sie nicht weiter gekommen?
+Zeitaufwand für die Makefile war zu groß. Die OpenMP Parallelisierung hat nur ca 30min gdauert inkl. mit Fehlersuche. Die Aufteilung zwischen Fehlersuche und OpenMP Programmierung war ungefär 15min/15min.
+Was war zu schwer oder unverständlich?
+Das Problem war mal wieder die Makefile, das ist immer noch zu kompliziert. OpenMP war vergleichsweise einfach. Wir haben auch mehr Zeit mit der Makefile als mit OpenMP verbracht.
+Was könnten wir verbessern?
+Makefile mehr erklären
+Was hat Ihnen besonders gut gefallen?
+OpenMP war cool

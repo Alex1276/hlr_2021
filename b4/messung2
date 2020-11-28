@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#SBATCH -p west
+
+for i in {0..10}
+do
+    srun ./messscript2 $((2**$i))
+done

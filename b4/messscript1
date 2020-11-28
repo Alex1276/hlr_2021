@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo -e "Number of Threads: $1\n" >> Messung1.out
+./partdiff $1 2 512 2 2 1200 >> Messung1.out

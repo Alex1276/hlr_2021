@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#SBATCH -p west
+
+for i in {1..12}
+do
+    srun ./messscript1 $i
+done

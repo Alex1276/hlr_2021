@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo -e "Number of Interlines: $1\n" >> Messung2.out
+./partdiff 12 2 $1 2 2 14400 >> Messung2.out
