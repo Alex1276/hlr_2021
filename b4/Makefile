@@ -1,9 +1,12 @@
+# Common definitions
+CC = gcc
+
 # Compiler flags, paths and libraries
 CFLAGS = -std=c11 -pedantic -Wall -Wextra -O3 -fopenmp -ggdb
 LFLAGS = $(CFLAGS)
 LIBS   = -lm
 
-TGTS = partdiff
+TGTS = partdiff partdiff-openmp partdiff-openmp-element partdiff-openmp-zeilen partdiff-openmp-spalten
 OBJS = partdiff.o askparams.o
 
 # Targets ...
@@ -40,6 +43,7 @@ askparams.o: askparams.c Makefile
 clean:
 	$(RM) $(OBJS)
 	$(RM) $(TGTS)
+	rm -f *.o
 
 
 
