@@ -1,13 +1,20 @@
 Die Bearbeitungszeit bitte in ganzen Stunden angeben (aufrunden).
 In den restlichen Zeilen jeweils ein X in der zutreffenden Spalte setzen.
 
-Bearbeitungszeit:  
-Schwierigkeit:     [ ] zu leicht         [ ] genau richtig     [ ] zu schwer
-Lehrreich:         [ ] wenig             [ ] etwas             [ ] sehr
-Verständlichkeit:  [ ] großteils unklar  [ ] teilweise unklar  [ ] verständlich
+Bearbeitungszeit: ca 6.5h 
+Schwierigkeit:     [ ] zu leicht         [X] genau richtig     [ ] zu schwer
+Lehrreich:         [ ] wenig             [ ] etwas             [X] sehr
+Verständlichkeit:  [ ] großteils unklar  [ ] teilweise unklar  [X] verständlich
 
 Kommentar:
 Zeitaufwand zu groß? Wo sind Sie nicht weiter gekommen?
+passte etwa, von 6x zu 8x performanter hat lange gedauert
+
 Was war zu schwer oder unverständlich?
+Aufgabe war verständlich. 
+
 Was könnten wir verbessern?
+Das POSIX Tutorial war nicht sonderlich umfangreich.
+
 Was hat Ihnen besonders gut gefallen?
+War gut als es lief.

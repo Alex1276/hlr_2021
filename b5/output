@@ -1,0 +1,53 @@
+============================================================
+Program for calculation of partial differential equations.  
+============================================================
+(c) Dr. Thomas Ludwig, TU München.
+    Thomas A. Zochler, TU München.
+    Andreas C. Schmidt, TU München.
+============================================================
+
+
+Select number of threads:
+Number> 2
+
+Select calculation method:
+  1: Gauß-Seidel.
+  2: Jacobi.
+method> 2
+
+Matrixsize = Interlines*8+9
+Interlines> 128
+
+Select interference function:
+ 1: f(x,y)=0.
+ 2: f(x,y)=2pi^2*sin(pi*x)sin(pi*y).
+interference function> 2
+
+Select termination:
+ 1: sufficient precision.
+ 2: number of iterations.
+termination> 2
+
+Select number of iterations:
+  Range: 1 .. 200000.
+Iterations> 1000
+ROWS PER THREAD: 515
+Berechnungszeit:    24.551612 s 
+Speicherbedarf:     16.282486 MiB
+Berechnungsmethode: Jacobi
+Interlines:         128
+Stoerfunktion:      f(x,y) = 2pi^2*sin(pi*x)sin(pi*y)
+Terminierung:       Anzahl der Iterationen
+Anzahl Iterationen: 1000
+Norm des Fehlers:   0.000000e+00
+
+Matrix:
+ 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000
+ 0.0000 0.0007 0.0013 0.0016 0.0018 0.0016 0.0013 0.0007 0.0000
+ 0.0000 0.0013 0.0023 0.0030 0.0033 0.0030 0.0023 0.0013 0.0000
+ 0.0000 0.0016 0.0030 0.0039 0.0043 0.0039 0.0030 0.0016 0.0000
+ 0.0000 0.0001 0.0002 0.0003 0.0003 0.0003 0.0002 0.0001 0.0000
+ 0.0000 0.0016 0.0030 0.0039 0.0043 0.0039 0.0030 0.0016 0.0000
+ 0.0000 0.0013 0.0023 0.0030 0.0033 0.0030 0.0023 0.0013 0.0000
+ 0.0000 0.0007 0.0013 0.0016 0.0018 0.0016 0.0013 0.0007 0.0000
+ 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000

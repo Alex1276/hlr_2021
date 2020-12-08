@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for j in {1..12}
+do
+    echo -e "Host: $(hostname --short)\n" >> Messung$1.out
+    srun ./messscript1 $j $1
+done

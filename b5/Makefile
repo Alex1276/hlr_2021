@@ -6,7 +6,7 @@ CFLAGS = -std=c11 -pedantic -Wall -Wextra -O3 -ggdb -pthread
 LFLAGS = $(CFLAGS)
 LIBS   = -lm
 
-TGTS = partdiff
+TGTS = partdiff partdiff-posix
 OBJS = partdiff.o askparams.o
 
 # Targets ...
