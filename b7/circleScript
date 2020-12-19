@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#SBATCH --partition west
+#SBATCH --ntasks 3
+#SBATCH --output=circle.out
+
+mpirun ./circle 11
