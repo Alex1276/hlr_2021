@@ -29,13 +29,6 @@ void printAllBuffs(int* buf, int sizeOfBuf)
     }
 }
 
-// allocates memory
-int*
-newBuf(int size)
-{   
-    int* buf = (int *)malloc(sizeof(int) * size);
-    return buf;
-}
 
 // circle methode rotates array
 void
@@ -68,9 +61,7 @@ circle(int firstElement, int* buf, int bufSize)
         MPI_Probe(receiveFrom, 1, MPI_COMM_WORLD, &status);
         MPI_Get_count(&status, MPI_INT, &bufSize);
 
-        // free old buffer and init new one with right size
-        free(buf);
-        int* buf = newBuf(bufSize);
+        buf = realloc(buf, sizeof(int) * bufSize);
         
         // receive new buffer in buf
         MPI_Recv(buf, bufSize, MPI_INT, receiveFrom, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -117,21 +108,23 @@ int main (int argc, char** argv)
     // check for correct number of of arguments
     if (argc != 2) 
     {
-        printf("Wrong number of arguments!");
+        printf("Wrong number of arguments!\n");
         return EXIT_FAILURE;
     }
     // check if argument is integer
     if(!sscanf(argv[1], "%i", &number))
     {
-        printf("Could not parse argument!");
+        printf("Could not parse argument!\n");
         return EXIT_FAILURE;
     }
 
+    
     // init mpi
     MPI_Init(&argc, &argv);
-    
+
     // array length
     int N = number;
+    
     // the buffer
     int* buf;
     // first element to know when we are done
@@ -143,7 +136,11 @@ int main (int argc, char** argv)
     // check if array ist larger than number of processes
     if(nprocs > N)
     {
-      printf("Too many processes for the defined array length");
+      if (rank == 0) {
+        printf("Too many processes for the defined array length\n");
+      }
+      // finalize all processes
+      MPI_Finalize();
       return EXIT_FAILURE;
     }
     // array length divided by processes
