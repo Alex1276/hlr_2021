@@ -7,16 +7,20 @@
 
 int rank, nprocs;
 
-void printAllBuffs(int* buf)
+// function that prints all buffs from all processes
+void printAllBuffs(int* buf, int sizeOfBuf)
 {
-    int sizeOfBuf = buf[0];
+    // for each process
     for (int i = 0; i < nprocs; i++)
     {
+      // wait, so its in the right order
         MPI_Barrier(MPI_COMM_WORLD);
-
+        // if process is rank that should print right now
         if(rank == i)
-        {   printf("(");
-            for (int j = 1; j <= sizeOfBuf; j++)
+        {   // print all values in buffer
+          printf("(");
+
+            for (int j = 0; j < sizeOfBuf; j++)
             {
                 printf("%d ", buf[j]);
             }
@@ -25,98 +29,132 @@ void printAllBuffs(int* buf)
     }
 }
 
+// allocates memory
+int*
+newBuf(int size)
+{   
+    int* buf = (int *)malloc(sizeof(int) * size);
+    return buf;
+}
+
+// circle methode rotates array
 void
-circle(int firstElement, int* buf, int maxBufSize)
+circle(int firstElement, int* buf, int bufSize)
 {
+    // status to use in probe
     MPI_Status status;
-    int sendTo = rank + 1;
-    int recieveFrom = rank - 1;
-    int finish;
-
-    if (rank == 0)
+    // the rank we want to send the buffer to
+    int sendTo = (rank + 1) % nprocs;
+    // the rank we want to receive a buffer from
+    int receiveFrom;
+    if (rank - 1 == -1)
     {
-        recieveFrom = nprocs - 1;
+      receiveFrom = nprocs - 1;
     }
-    else if (rank == nprocs - 1)
+    else
     {
-        sendTo = 0;
+      receiveFrom = rank -1;
     }
+    // 1 = done, 0 = not done yet
+    int finish = 0;
 
-
-    finish = 0;
-    if (rank == nprocs - 1)
-    {
-        finish = (firstElement == buf[1]);
-    }
-
-    MPI_Bcast(&finish, 1, MPI_INT, nprocs - 1, MPI_COMM_WORLD);
+    // while not finished
     while(!finish)
     {
-        MPI_Send(buf, maxBufSize, MPI_INT, sendTo, 1, MPI_COMM_WORLD);
+      // send buf to process with rank sendTo
+        MPI_Send(buf, bufSize, MPI_INT, sendTo, 1, MPI_COMM_WORLD);
 
+        // get nect buffer size
+        MPI_Probe(receiveFrom, 1, MPI_COMM_WORLD, &status);
+        MPI_Get_count(&status, MPI_INT, &bufSize);
+
+        // free old buffer and init new one with right size
+        free(buf);
+        int* buf = newBuf(bufSize);
         
-        MPI_Recv(buf, maxBufSize, MPI_INT, recieveFrom, 1, MPI_COMM_WORLD, &status);
-                
+        // receive new buffer in buf
+        MPI_Recv(buf, bufSize, MPI_INT, receiveFrom, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
+        // if this is process with last rank
         if (rank == nprocs - 1)
-        {
-            finish = (firstElement == buf[1]);
+        {   
+          // done if first firstElement is first element of our buffer
+            finish = (firstElement == buf[0]);
         }
+        // send finished to all processes from process with last rank
         MPI_Bcast(&finish, 1, MPI_INT, nprocs - 1, MPI_COMM_WORLD);
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // Done 
+    // rank 0 prints Nachher
     if (rank == 0)
     {
         printf("\nNacher: ");
     }
-
-    printAllBuffs(buf);
+    // all processes print their buf in right order
+    printAllBuffs(buf, bufSize);
 }
 
+// allocates buffer on heap with desired size and fills random int from 0 to 24
 int*
-initBuf(int maxBufSize, int bufSize)
+initBuf(int bufSize)
 {
-    // initialize array to be the lengtg of the maximum buff size + 1
-    // buf[0] will store the length of array
-    int* buf = malloc(sizeof(int) * (maxBufSize + 1));
-
+    //allocates memory of desired size
+    int* buf = malloc(sizeof(int) * bufSize);
+    // set random seed
     srand(time(NULL) * (rank + 1));
-
-    buf[0] = bufSize;
-    for (int i = 1; i <= bufSize; i++)
+    // init values into buffer
+    for (int i = 0; i < bufSize; i++)
     {
         buf[i] = rand() % 25;
     }
-
     return buf;
 }
 
 int main (int argc, char** argv)
 {
-    MPI_Init(&argc, &argv);
-    int N;
-    int* buf;
-    int firstElement;
-    
-    if (argc < 2) {
-        printf("Too many Arguments");
-        return EXIT_FAILURE;
-    }
-    
-    if(!sscanf(argv[1], "%i", &N))
+    int number;
+    // check for correct number of of arguments
+    if (argc != 2) 
     {
-        printf("could not parse argument");
+        printf("Wrong number of arguments!");
+        return EXIT_FAILURE;
+    }
+    // check if argument is integer
+    if(!sscanf(argv[1], "%i", &number))
+    {
+        printf("Could not parse argument!");
         return EXIT_FAILURE;
     }
 
-
+    // init mpi
+    MPI_Init(&argc, &argv);
+    
+    // array length
+    int N = number;
+    // the buffer
+    int* buf;
+    // first element to know when we are done
+    int firstElement;
+    // get number of processes
    	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // get rank of this process
+	 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // check if array ist larger than number of processes
+    if(nprocs > N)
+    {
+      printf("Too many processes for the defined array length");
+      return EXIT_FAILURE;
+    }
+    // array length divided by processes
     int size = N / nprocs;
+    // 
     int sizeRemainder = N % nprocs;
+    // size of each buffer
     int bufSize;
+    // maximum buffer size
     int maxBufSize = size + 1;
-
+    // set right bufSize
     if(rank < sizeRemainder)
     {
         bufSize = maxBufSize;
@@ -125,27 +163,30 @@ int main (int argc, char** argv)
     {
         bufSize = size;
     }
-
-    buf = initBuf(maxBufSize, bufSize);
-
+    // init buffer with right size
+    buf = initBuf(bufSize);
+    
+    // checks that only process with rank 0 prints
     if (rank == 0)
     {
         printf("Vorher: ");
     }
     
+    // prints all bufs
+    printAllBuffs(buf, bufSize);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    printAllBuffs(buf);
-
-
-    firstElement = buf[1];
-
+    // set first element for finish
+    firstElement = buf[0];
+    // send firstElement from process with rank 0 to all the others
     MPI_Bcast(&firstElement, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-    circle(firstElement, buf, maxBufSize);
+    // start circleing
+    circle(firstElement, buf, bufSize);
     
+    // finalize all processes
     MPI_Finalize();
+
+    // prettier in terminal output
+    printf("\n"); 
 
     return EXIT_SUCCESS;
 }

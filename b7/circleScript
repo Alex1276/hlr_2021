@@ -1,7 +1,9 @@
 #!/bin/bash
 
 #SBATCH --partition west
-#SBATCH --ntasks 3
+#SBATCH --ntasks 6
 #SBATCH --output=circle.out
 
-mpirun ./circle 11
+export SCOREP_ENABLE_TRACING=true
+
+mpirun ./circle 43
