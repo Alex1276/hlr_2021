@@ -38,9 +38,9 @@ struct calculation_arguments
     double    h;              /* length of a space between two lines            */
     double    ***Matrix;      /* index matrix used for addressing M             */
     double    *M;             /* two matrices with real values                  */
-    uint64_t      numberOfRows;   /* two matrices with real values                  */
+    uint64_t      numberOfRows;   /* Number of rows to calculate for each rank  */
     uint64_t       start;         /* two matrices with real values                  */
-  uint64_t       end;             /* two matrices with real values                  */
+    uint64_t       end;           /* two matrices with real values                  */
 };
 
 struct calculation_results
@@ -79,15 +79,14 @@ initVariables (struct calculation_arguments* arguments, struct calculation_resul
 
         if(rank < rest)
         {
-            arguments->numberOfRows = size + 1;
-            arguments->start = (rank * arguments->numberOfRows);
+            arguments->start = (rank * (size + 1));
+            arguments->end = arguments->start + size;
         }
         else 
         {
-            arguments->numberOfRows = size;
-            arguments->start = (rank * arguments->numberOfRows) + 1;
+            arguments->start = (rank * size) + 1;
+            arguments->end = arguments->start + size - 1;
         }
-        arguments->end = arguments->start + (arguments->numberOfRows - 1);
         if(rank == 0)
         {
             arguments->start = 1;
@@ -96,6 +95,8 @@ initVariables (struct calculation_arguments* arguments, struct calculation_resul
         {
             arguments->end = arguments->N-1;
         }
+        arguments->numberOfRows = arguments->end - arguments->start + 1;
+
     }
     else
     {
@@ -109,42 +110,6 @@ initVariables (struct calculation_arguments* arguments, struct calculation_resul
     results->stat_precision = 0;
 }
 
-static
-void 
-PrintMatrix(struct calculation_arguments* arguments,struct calculation_results* results) {
-  uint64_t x, y;
-  uint64_t const N = arguments->N;
-  double** Matrix = arguments->Matrix[results->m];
-  
-  if(rank == 0 || rank == nprocs -1)
-  {
-      arguments->numberOfRows += 1;
-  }
-  else
-  {
-      arguments->numberOfRows +=2;
-  }
-  for (int i = 0; i < nprocs; i++)
-    {
-      // wait, so its in the right order
-        MPI_Barrier(MPI_COMM_WORLD); 
-        if(rank == i)
-        {
-            printf("Print Rank: %d \n",(int)rank);
-            for(x = 0;x < arguments->numberOfRows; x++)
-            {   
-                for(y = 0; y < N+1; y++)
-                {
-                    printf("%7.4f", Matrix[x][y]);
-                }
-                printf("\n");
-            }       
-        }
-    }
-
-  
-    printf("\n");
-}
 /* ************************************************************************ */
 /* freeMatrices: frees memory for matrices                                  */
 /* ************************************************************************ */
@@ -190,33 +155,19 @@ void
 allocateMatrices (struct calculation_arguments* arguments, struct options const* options)
 {
     uint64_t i, j;
-    uint64_t numberOfRows = arguments->numberOfRows;  //TODO: HIER MUSS NOCH INTERLINES
+    uint64_t numberOfMatrixRows = arguments->numberOfRows+2;
     uint64_t const N = arguments->N;
 
-    if(options->method == METH_JACOBI)
-    {
-        if(rank != 0 && rank != nprocs - 1)
-        {
-            // + 2 for the 2 halo lines
-            numberOfRows += 2; 
-        }
-        else
-        {
-            numberOfRows += 1;
-        }
-        
-    }
-
-    arguments->M = allocateMemory(arguments->num_matrices * (numberOfRows) * (N+1) * sizeof(double));
+    arguments->M = allocateMemory(arguments->num_matrices * (numberOfMatrixRows) * (N+1) * sizeof(double));
     arguments->Matrix = allocateMemory(arguments->num_matrices * sizeof(double**));
 
     for (i = 0; i < arguments->num_matrices; i++)
     {
-        arguments->Matrix[i] = allocateMemory((numberOfRows) * sizeof(double*));
+        arguments->Matrix[i] = allocateMemory((numberOfMatrixRows) * sizeof(double*));
 
-        for (j = 0; j < numberOfRows; j++)
+        for (j = 0; j < numberOfMatrixRows; j++)
         {
-            arguments->Matrix[i][j] = arguments->M + (i * (numberOfRows) * (N + 1)) + (j * (N + 1));
+            arguments->Matrix[i][j] = arguments->M + (i * (numberOfMatrixRows) * (N + 1)) + (j * (N + 1));
         }
     }
 }
@@ -235,10 +186,12 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
     double*** Matrix = arguments->Matrix;
     int globalRow;
 
+    uint64_t numberOfMatrixRows = arguments->numberOfRows+2;
+
     /* initialize matrix/matrices with zeros */
     for (g = 0; g < arguments->num_matrices; g++)
     {
-        for (i = 0; i <= arguments->numberOfRows; i++)
+        for (i = 0; i < numberOfMatrixRows; i++)
         {
             for (j = 0; j <= N; j++)
             {
@@ -248,7 +201,7 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
 
         if(options->method == METH_JACOBI && options->inf_func == FUNC_F0)
         {
-            for (i = 1; i <= arguments->numberOfRows; i++)
+            for (i = 1; i < numberOfMatrixRows; i++)
             {   
                 globalRow = (i + arguments->start - 1);
                 Matrix[g][i][0] = 1.0 - (h * globalRow);
@@ -269,10 +222,10 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
             {
                 for (i = 1; i <= N; i++)
                 {
-                    Matrix[g][arguments->numberOfRows][i] = h * i;
+                    Matrix[g][numberOfMatrixRows - 1][i] = h * i;
                 }
                 
-                Matrix[g][arguments->numberOfRows][0] = 0.0;
+                Matrix[g][numberOfMatrixRows - 1][0] = 0.0;
             }
         
         }
@@ -406,13 +359,12 @@ static
 void
 calculateJacobi (struct calculation_arguments const* arguments, struct calculation_results* results, struct options const* options)
 {
-    uint64_t haloindextop, haloindexbottom;
-
     int i, j;           /* local variables for loops */
     int m1, m2;         /* used as indices for old and new matrices */
     double star;        /* four times center value minus 4 neigh.b values */
     double residuum;    /* residuum of current iteration */
     double maxResiduum; /* maximum residuum value of a slave in iteration */
+    double maxResiduumGlobal;
 
     int const N = arguments->N;
     double const h = arguments->h;
@@ -422,21 +374,8 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
 
     int term_iteration = options->term_iteration;
 
-    int const elements = 8 * options->interlines + 9;
-
     m1 = 0;
     m2 = 1;
-
-    haloindextop = 0;
-    if (rank == 0 || rank == nprocs - 1) 
-    {
-        haloindexbottom = arguments->numberOfRows;
-
-    }
-    else 
-    {
-        haloindexbottom = arguments->numberOfRows + 1;
-    }
 
 
     if (options->inf_func == FUNC_FPISIN)
@@ -444,116 +383,33 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
         pih = PI * h;
         fpisin = 0.25 * TWO_PI_SQUARE * h * h;
     }
-    MPI_Status status;
+
     while (term_iteration > 0)
     {
-    double** Matrix_Out = arguments->Matrix[m1];
-    double** Matrix_In  = arguments->Matrix[m2];
-
-    // all rank send their top halo up    
-    int rankToSendTo = rank - 1;
-    int rankToReciveFrom = rank + 1;
-
-    /*
-    if (rank == 0)
-    {
-      printf("waiting to Recv %d from %d\n",rank,rankToReciveFrom);
-      MPI_Recv(Matrix_In[haloindexbottom], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-      printf("sucessfully Recv %d from %d\n",rank,rankToReciveFrom);
-    }
-    else if (rank == 1)
-    {
-      printf("Send %d to %d\n",rank,rankToSendTo);
-       MPI_Send(Matrix_In[haloindextop + 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-    }
-    */
-
-
-    // send or receive halolines up
-    
-    if(rank % 2 != 0) // ungerade
-    {
-      if (rank == nprocs - 1) 
-      {
-        printf("Send %d to %d\n",rank,rankToSendTo);
-        MPI_Send(Matrix_In[haloindextop + 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-      }
-      else
-      {
-        printf("waiting to Recv %d from %d\n",rank,rankToReciveFrom);
-        MPI_Recv(Matrix_In[haloindexbottom], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-        printf("sucessfully Recv %d from %d\n",rank,rankToReciveFrom);
-
-        printf("Send %d to %d\n",rank,rankToSendTo);
-        MPI_Send(Matrix_In[haloindextop + 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-      }
-
-    }
-    else
-    {
-      if (rank == 0) 
-      {
-        printf("waiting to Recv %d from %d\n",rank,rankToReciveFrom);
-        MPI_Recv(Matrix_In[haloindexbottom], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-        printf("sucessfully Recv %d from %d\n",rank,rankToReciveFrom);
-      }
-      else if (rank == nprocs - 1) 
-      {
-        printf("Send %d to %d\n",rank,rankToSendTo);
-        MPI_Send(Matrix_In[haloindextop + 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-      }
-      else
-      {
-        printf("Send %d to %d\n",rank,rankToSendTo);
-        MPI_Send(Matrix_In[haloindextop + 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-        printf("waiting to Recv %d from %d\n",rank,rankToReciveFrom);
-        MPI_Recv(Matrix_In[haloindexbottom], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-        printf("sucessfully Recv %d from %d\n",rank,rankToReciveFrom);
-      }
-    }
-    
-
-    
-  // all rank send their bottom halo down    
-    rankToSendTo = rank + 1;
-    rankToReciveFrom = rank - 1;
-
-  // send or receive halolines down
-    if (rank == nprocs - 1)
-    { // only receive top
-      MPI_Recv(Matrix_In[haloindextop], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-    }
-    else if (rank == 0) 
-    { 
-      MPI_Send(Matrix_In[haloindexbottom - 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-    }
-    else
-    {
-      if(rank % 2 != 0)
-      {
-        MPI_Recv(Matrix_In[haloindextop], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-
-        MPI_Send(Matrix_In[haloindexbottom - 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-      }
-      else
-      {
-        MPI_Send(Matrix_In[haloindexbottom - 1], elements, MPI_DOUBLE, rankToSendTo, rank, MPI_COMM_WORLD);
-
-        MPI_Recv(Matrix_In[haloindextop], elements, MPI_DOUBLE, rankToReciveFrom, rankToReciveFrom, MPI_COMM_WORLD, &status);
-      }
-    }
+        double** Matrix_Out = arguments->Matrix[m1];
+        double** Matrix_In  = arguments->Matrix[m2];
 
         maxResiduum = 0;
 
+        
+        if(rank > 0) 
+        {
+            MPI_Sendrecv(Matrix_In[1], arguments->N+1, MPI_DOUBLE, rank - 1, rank, Matrix_In[0], arguments->N + 1, MPI_DOUBLE, rank - 1, rank - 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+        if(rank < nprocs - 1)
+        {
+            MPI_Sendrecv(Matrix_In[arguments->numberOfRows], arguments->N+1, MPI_DOUBLE, rank + 1, rank, Matrix_In[arguments->numberOfRows + 1], arguments->N + 1, MPI_DOUBLE, rank + 1, rank + 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+
         /* over all rows */
-        for (i = 1; i < arguments->numberOfRows; i++)
+        for (i = 1; i < arguments->numberOfRows + 1; i++)
         {
             double fpisin_i = 0.0;
 
             if (options->inf_func == FUNC_FPISIN)
             {
                 // i + start is the overall row number
-                fpisin_i = fpisin * sin(pih * (double)i + arguments->start);
+                fpisin_i = fpisin * sin(pih * ((double)i + arguments->start - 1));
             }
 
 
@@ -578,14 +434,10 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
             }
         }
 
+        MPI_Allreduce(&maxResiduum, &maxResiduumGlobal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
         results->stat_iteration++;
-        results->stat_precision = maxResiduum;
-
-
-        // distribute real max maxResiduum
-        MPI_Reduce(&maxResiduum,&maxResiduum,1,MPI_DOUBLE,MPI_MAX,0,MPI_COMM_WORLD);
-      // brodcast real max residumm to all ranks
-        MPI_Bcast(&maxResiduum, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        results->stat_precision = maxResiduumGlobal;
 
         /* exchange m1 and m2 */
         i = m1;
@@ -595,7 +447,7 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
         /* check for stopping calculation depending on termination method */
         if (options->termination == TERM_PREC)
         {
-            if (maxResiduum < options->term_precision)
+            if (maxResiduumGlobal < options->term_precision)
             {
                 term_iteration = 0;
             }
@@ -612,7 +464,6 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
 /* ************************************************************************ */
 /*  displayStatistics: displays some statistics about the calculation       */
 /* ************************************************************************ */
-/*
 static
 void
 displayStatistics (struct calculation_arguments const* arguments, struct calculation_results const* results, struct options const* options)
@@ -663,7 +514,7 @@ displayStatistics (struct calculation_arguments const* arguments, struct calcula
     printf("Norm des Fehlers:   %e\n", results->stat_precision);
     printf("\n");
 }
-*/
+
 /****************************************************************************/
 /** Beschreibung der Funktion displayMatrix:                               **/
 /**                                                                        **/
@@ -745,6 +596,126 @@ DisplayMatrix (struct calculation_arguments* arguments, struct calculation_resul
 }
 
 /* ************************************************************************ */
+/* initVariables: Initializes some global variables                         */
+/* ************************************************************************ */
+static
+void
+initVariablesGS (struct calculation_arguments* arguments, struct calculation_results* results, struct options const* options)
+{
+    arguments->N = (options->interlines * 8) + 9 - 1;
+    arguments->num_matrices = (options->method == METH_JACOBI) ? 2 : 1;
+    arguments->h = 1.0 / arguments->N;
+
+    results->m = 0;
+    results->stat_iteration = 0;
+    results->stat_precision = 0;
+}
+/* ************************************************************************ */
+/* allocateMatrices: allocates memory for matrices                          */
+/* ************************************************************************ */
+static
+void
+allocateMatricesGS (struct calculation_arguments* arguments)
+{
+    uint64_t i, j;
+
+    uint64_t const N = arguments->N;
+
+    arguments->M = allocateMemory(arguments->num_matrices * (N + 1) * (N + 1) * sizeof(double));
+    arguments->Matrix = allocateMemory(arguments->num_matrices * sizeof(double**));
+
+    for (i = 0; i < arguments->num_matrices; i++)
+    {
+        arguments->Matrix[i] = allocateMemory((N + 1) * sizeof(double*));
+
+        for (j = 0; j <= N; j++)
+        {
+            arguments->Matrix[i][j] = arguments->M + (i * (N + 1) * (N + 1)) + (j * (N + 1));
+        }
+    }
+}
+
+/* ************************************************************************ */
+/* initMatrices: Initialize matrix/matrices and some global variables       */
+/* ************************************************************************ */
+static
+void
+initMatricesGS (struct calculation_arguments* arguments, struct options const* options)
+{
+    uint64_t g, i, j; /* local variables for loops */
+
+    uint64_t const N = arguments->N;
+    double const h = arguments->h;
+    double*** Matrix = arguments->Matrix;
+
+    /* initialize matrix/matrices with zeros */
+    for (g = 0; g < arguments->num_matrices; g++)
+    {
+        for (i = 0; i <= N; i++)
+        {
+            for (j = 0; j <= N; j++)
+            {
+                Matrix[g][i][j] = 0.0;
+            }
+        }
+    }
+
+    /* initialize borders, depending on function (function 2: nothing to do) */
+    if (options->inf_func == FUNC_F0)
+    {
+        for (g = 0; g < arguments->num_matrices; g++)
+        {
+            for (i = 0; i <= N; i++)
+            {
+                Matrix[g][i][0] = 1.0 - (h * i);
+                Matrix[g][i][N] = h * i;
+                Matrix[g][0][i] = 1.0 - (h * i);
+                Matrix[g][N][i] = h * i;
+            }
+
+            Matrix[g][N][0] = 0.0;
+            Matrix[g][0][N] = 0.0;
+        }
+    }
+}
+
+
+/****************************************************************************/
+/** Beschreibung der Funktion displayMatrix:                               **/
+/**                                                                        **/
+/** Die Funktion displayMatrix gibt eine Matrix                            **/
+/** in einer "ubersichtlichen Art und Weise auf die Standardausgabe aus.   **/
+/**                                                                        **/
+/** Die "Ubersichtlichkeit wird erreicht, indem nur ein Teil der Matrix    **/
+/** ausgegeben wird. Aus der Matrix werden die Randzeilen/-spalten sowie   **/
+/** sieben Zwischenzeilen ausgegeben.                                      **/
+/****************************************************************************/
+static
+void
+displayMatrixGS (struct calculation_arguments* arguments, struct calculation_results* results, struct options* options)
+{
+    int x, y;
+
+    double** Matrix = arguments->Matrix[results->m];
+
+    int const interlines = options->interlines;
+
+    printf("Matrix:\n");
+
+    for (y = 0; y < 9; y++)
+    {
+        for (x = 0; x < 9; x++)
+        {
+            printf ("%7.4f", Matrix[y * (interlines + 1)][x * (interlines + 1)]);
+        }
+
+        printf ("\n");
+    }
+
+    fflush (stdout);
+}
+
+/* ************************************************************************ */
 /*  main                                                                    */
 /* ************************************************************************ */
 int
@@ -756,32 +727,47 @@ main (int argc, char** argv)
 
     askParams(&options, argc, argv);
 
+
+  if (options.method == METH_JACOBI)
+  {
     MPI_Init(&argc, &argv);
-  
     // get nr of processes
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-
     // get rank of this process
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    //printf("%d",rank);
-
     initVariables(&arguments, &results, &options);
-
     allocateMatrices(&arguments, &options);
     initMatrices(&arguments, &options);
 
-    //gettimeofday(&start_time, NULL);
+    gettimeofday(&start_time, NULL);
     calculateJacobi(&arguments, &results, &options);
-    //gettimeofday(&comp_time, NULL);
+    gettimeofday(&comp_time, NULL);
 
-    printf("Rank: %d, number of rows: %ld\n", rank, arguments.numberOfRows);
-    printf("Rank: %d, start: %ld, end: %ld\n", rank, arguments.start,arguments.end);
-    //displayStatistics(&arguments, &results, &options);
+    if(rank == 0)
+    {
+      displayStatistics(&arguments, &results, &options);
+    }
     DisplayMatrix (&arguments,&results, &options,rank, nprocs, (int)arguments.start, (int)arguments.end);
-    //PrintMatrix(&arguments, &results);
+      freeMatrices(&arguments);
+    MPI_Finalize();
+      return 0;
+  }
+  else
+  {
+    initVariablesGS(&arguments, &results, &options);
+
+    allocateMatricesGS(&arguments);
+    initMatricesGS(&arguments, &options);
+
+    gettimeofday(&start_time, NULL);
+    calculate(&arguments, &results, &options);
+    gettimeofday(&comp_time, NULL);
+
+    displayStatistics(&arguments, &results, &options);
+    displayMatrixGS(&arguments, &results, &options);
+
     freeMatrices(&arguments);
 
-    MPI_Finalize();
     return 0;
+  }
 }
