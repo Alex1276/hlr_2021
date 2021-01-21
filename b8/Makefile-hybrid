@@ -2,17 +2,20 @@
 CC = mpicc
 
 # Compiler flags, paths and libraries
-CFLAGS = -std=c11 -pedantic -Wall -Wextra -O3 -ggdb
+CFLAGS = -std=c11 -pedantic -Wall -Wextra -O3 -fopenmp -ggdb
 LFLAGS = $(CFLAGS)
 LIBS   = -lm
 
-TGTS = partdiff
+TGTS = partdiff partdiff-par partdiff-par-hybrid
 OBJS = partdiff.o askparams.o
 
 # Targets ...
 all: partdiff-par
 
 partdiff-par: $(OBJS) Makefile
+	$(CC) $(LFLAGS) -o $@ $(OBJS) $(LIBS)
+
+partdiff-par-hybrid: $(OBJS) Makefile
 	$(CC) $(LFLAGS) -o $@ $(OBJS) $(LIBS)
 
 partdiff.o: partdiff.c Makefile

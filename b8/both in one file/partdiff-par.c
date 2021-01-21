@@ -29,6 +29,11 @@
 
 #include <mpi.h>
 
+#ifdef OPENMP
+	#include "omp.h"
+#endif
+
+
 #include "partdiff.h"
 
 struct calculation_arguments
@@ -155,7 +160,7 @@ void
 allocateMatrices (struct calculation_arguments* arguments, struct options const* options)
 {
     uint64_t i, j;
-    uint64_t numberOfMatrixRows = arguments->numberOfRows + 2;
+    uint64_t numberOfMatrixRows = arguments->numberOfRows+2;
     uint64_t const N = arguments->N;
 
     arguments->M = allocateMemory(arguments->num_matrices * (numberOfMatrixRows) * (N+1) * sizeof(double));
@@ -391,6 +396,7 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
 
         maxResiduum = 0;
 
+        
         if(rank > 0) 
         {
             MPI_Sendrecv(Matrix_In[1], arguments->N+1, MPI_DOUBLE, rank - 1, rank, Matrix_In[0], arguments->N + 1, MPI_DOUBLE, rank - 1, rank - 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -399,6 +405,11 @@ calculateJacobi (struct calculation_arguments const* arguments, struct calculati
         {
             MPI_Sendrecv(Matrix_In[arguments->numberOfRows], arguments->N+1, MPI_DOUBLE, rank + 1, rank, Matrix_In[arguments->numberOfRows + 1], arguments->N + 1, MPI_DOUBLE, rank + 1, rank + 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
+
+
+		#ifdef OPENMP
+	        #pragma omp parallel for private(residuum, star, i, j) shared(Matrix_Out, maxResiduum)
+		#endif
 
         /* over all rows */
         for (i = 1; i < arguments->numberOfRows + 1; i++)
@@ -705,7 +716,7 @@ displayMatrixGS (struct calculation_arguments* arguments, struct calculation_res
     {
         for (x = 0; x < 9; x++)
         {
-          printf ("%7.4f", Matrix[y * (interlines + 1)][x * (interlines + 1)]);
+            printf ("%7.4f", Matrix[y * (interlines + 1)][x * (interlines + 1)]);
         }
 
         printf ("\n");
@@ -726,6 +737,9 @@ main (int argc, char** argv)
 
     askParams(&options, argc, argv);
 
+    #ifdef OPENMP
+      omp_set_num_threads(options.number);
+    #endif
 
   if (options.method == METH_JACOBI)
   {
@@ -740,16 +754,17 @@ main (int argc, char** argv)
 
     gettimeofday(&start_time, NULL);
     calculateJacobi(&arguments, &results, &options);
-    gettimeofday(&comp_time, NULL);
+    gettimeofday(&comp_time, NULL);    omp_set_num_threads(options.number);
+
 
     if(rank == 0)
     {
       displayStatistics(&arguments, &results, &options);
     }
     DisplayMatrix (&arguments,&results, &options,rank, nprocs, (int)arguments.start, (int)arguments.end);
-    freeMatrices(&arguments);
+      freeMatrices(&arguments);
     MPI_Finalize();
-    return 0;
+      return 0;
   }
   else
   {
