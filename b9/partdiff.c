@@ -213,10 +213,8 @@ initMatrices (struct calculation_arguments* arguments, struct options const* opt
                 {
                     Matrix[g][numberOfMatrixRows - 1][i] = h * i;
                 }
-
                 Matrix[g][numberOfMatrixRows - 1][0] = 0.0;
             }
-
         }
     }
 }
@@ -298,7 +296,7 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
             // send first real line of just calculated matrix out
             // to rank - 1
             // tag = sender (rank)
-            MPI_Send(Matrix_In[1], N + 1, MPI_DOUBLE, rank - 1, rank, MPI_COMM_WORLD)
+            MPI_Send(Matrix_In[1], N + 1, MPI_DOUBLE, rank - 1, rank, MPI_COMM_WORLD);
           }
 
             double fpisin_i = 0.0;
@@ -666,12 +664,43 @@ main (int argc, char** argv)
     struct calculation_arguments arguments;
     struct calculation_results results;
 
-    askParams(&options, argc, argv);
-    MPI_Init(&argc, &argv);
+    int valid_input = 0;
+
+	MPI_Init(&argc, &argv);
     // get nr of processes
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     // get rank of this process
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // prozess 0 macht die eingabe
+    if(rank==0)
+    {
+    	askParams(&options, argc, argv);
+	}
+    
+    /* 
+    HIER FEHLT NOCH DER CHECK OB ES GEKLAPPT HAT, ABER askparams HAT 
+    KEINEN RETURN, DAHER WEISS ICH NOCH NICHT WIE DAS ZU LOESEN IST OHNE 
+    QUASI DIE GESAMTE INPUTVALIDATION AUS askparams.c HIER HIN ZU KOPIEREN 
+    */
+    // abbrechen, falls die eingabe nicht klappt
+    MPI_Bcast(&valid_input, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if(valid_input != 0)
+    {
+    	MPI_Finalize();
+    	exit(1);
+    }
+
+    // die eigentliche eingabe an die anderen prozesse senden
+    MPI_Bcast(&options.number, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&options.method, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&options.interlines, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&options.inf_func, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&options.termination, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&options.term_iteration, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&options.term_precision, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    
     initVariables(&arguments, &results, &options);
     allocateMatrices(&arguments, &options);
     initMatrices(&arguments, &options);
