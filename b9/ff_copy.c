@@ -321,7 +321,7 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
 
             if (options->inf_func == FUNC_FPISIN)
             {
-                fpisin_i = fpisin * sin(pih * (double)i);
+              fpisin_i = fpisin * sin(pih * ((double)i + arguments->start - 1));
             }
 
             /* over all columns */
@@ -346,8 +346,6 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
             // und ist nicht der letzte rank (da der nichts runter sendet)
             if (i == arguments->numberOfRows && rank != nprocs - 1)
             {
-
-
               if (results->stat_iteration > 0 && !sentStopAlready)
               {
                   MPI_Wait(&bottomRowRequest,MPI_STATUS_IGNORE);
