@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -ex 
+
+proc=4
+
+echo "proc = $proc"
+echo "Jacobi"
+
+#diff <(/home/steffens/04-PDE/partdiff 1 2 0 1 2 1) <(mpirun -np $proc /home/steffens/b9/partdiff-par 1 2 0 1 2 1)
+#diff <(/home/steffens/04-PDE/partdiff 1 2 10 1 1 1e-6) <(mpirun -np $proc /home/steffens/b9/partdiff-par 1 2 10 1 1 1e-6)
+#diff <(/home/steffens/04-PDE/partdiff 1 2 30 2 2 1000) <(mpirun -np $proc /home/steffens/b9/partdiff-par 1 2 30 2 2 1000)
+
+echo "Gauss-Seidel"
+
+#diff <(/home/steffens/04-PDE/partdiff 1 1 0 1 2 1) <(mpirun -np $proc /home/steffens/b9/partdiff-par 1 1 0 1 2 1)
+diff <(/home/steffens/04-PDE/partdiff 1 1 25 1 1 2.928093e-05) <(mpirun -np $proc /home/steffens/b9/partdiff-par 1 1 25 1 1 2.928093e-05)
+#diff <(/home/steffens/04-PDE/partdiff 1 1 30 2 2 1000) <(mpirun -np $proc /home/steffens/b9/partdiff-par 1 1 30 2 2 1000)
+
+echo "Done"

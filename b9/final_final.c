@@ -237,7 +237,7 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
     double residuum;    /* residuum of current iteration */
     double maxResiduum; /* maximum residuum value of a slave in iteration */
 
-    int itterToStopAt; // bei term_prec die itteration bei der wir stopen wollen
+    int itterToStopAt; // bei term_prec die iteration bei der wir stoppen wollen
 
     MPI_Request maxResRequest;
     MPI_Request topRowRequest;

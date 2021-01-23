@@ -719,34 +719,33 @@ main (int argc, char** argv)
 
     int color = 0;
 
-	  MPI_Init(&argc, &argv);
+    MPI_Init(&argc, &argv);
     // get nr of processes
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     // get rank of this process
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // prozess 0 macht die eingabe
-    askParams(&options, argc, argv,rank);
-
     // hier wird der rank mit uebergeben um den header nur einmal auszugeben
     askParams(&options, argc, argv, rank);
 
-	  // neuer communicator, wenn es mehr prozesse als zeilen gibt (wir brauchen
-	  // immer min 2 zeilen pro prozess)
+    // neuer communicator, wenn es mehr prozesse als zeilen gibt (wir brauchen
+    // immer min 2 zeilen pro prozess)
     if(((options.interlines * 8) + 9 - 1)*2 < nprocs)
     {
-    	// alle ueberfluessigen prozesse machen ab jetzt nichts mehr
-    	if(rank > nprocs/2)
-    	{
-    		color = 1;
-    	}
-    	// neuer communicator mit der teilmenge der prozesse
-    	MPI_Comm_split(MPI_COMM_WORLD, 0, rank, &new_comm);
+      // alle ueberfluessigen prozesse machen ab jetzt nichts mehr
+      if(rank > nprocs/2)
+      {
+        color = 1;
+      }
+      // neuer communicator mit der teilmenge der prozesse
+      MPI_Comm_split(MPI_COMM_WORLD, 0, rank, &new_comm);
+      MPI_Comm_size(new_comm, &nprocs);
+      MPI_Comm_rank(new_comm, &rank);
     }
     else
     {
-    	// wenn genuegend zeilen da sind dann wird einfach der WORLD communicator dupliziert
-    	MPI_Comm_dup(MPI_COMM_WORLD, &new_comm);
+      // wenn genuegend zeilen da sind dann wird einfach der WORLD communicator dupliziert
+      MPI_Comm_dup(MPI_COMM_WORLD, &new_comm);
     }
 
 
@@ -763,13 +762,16 @@ main (int argc, char** argv)
     {
       calculateGS(&arguments, &results, &options);
     }
+
+    MPI_Barrier(new_comm);
+
     gettimeofday(&comp_time, NULL);
 
     if(rank == 0)
     {
       displayStatistics(&arguments, &results, &options);
     }
-    DisplayMatrix (&arguments,&results, &options,rank, nprocs, (int)arguments.start, (int)arguments.end);
+    DisplayMatrix(&arguments,&results, &options,rank, nprocs, (int)arguments.start, (int)arguments.end);
     freeMatrices(&arguments);
     MPI_Finalize();
     return 0;
