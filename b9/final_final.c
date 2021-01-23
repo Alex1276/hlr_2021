@@ -64,6 +64,9 @@ int nprocs, rank;
 /* ************************************************************************ */
 /* initVariables: Initializes some global variables                         */
 /* ************************************************************************ */
+/* ************************************************************************ */
+/* initVariables: Initializes some global variables                         */
+/* ************************************************************************ */
 static
 void
 initVariables (struct calculation_arguments* arguments, struct calculation_results* results, struct options const* options)
@@ -77,12 +80,12 @@ initVariables (struct calculation_arguments* arguments, struct calculation_resul
 
         if(rank < rest)
         {
-            arguments->start = (rank * (size + 1));
+            arguments->start = (rank * size) + rank;
             arguments->end = arguments->start + size;
         }
         else
         {
-            arguments->start = (rank * size) + 1;
+            arguments->start = (rank * size) + rest;
             arguments->end = arguments->start + size - 1;
         }
         if(rank == 0)
@@ -94,6 +97,7 @@ initVariables (struct calculation_arguments* arguments, struct calculation_resul
             arguments->end = arguments->N-1;
         }
         arguments->numberOfRows = arguments->end - arguments->start + 1;
+
     results->m = 0;
     results->stat_iteration = 0;
     results->stat_precision = 0;
@@ -233,6 +237,12 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
     double residuum;    /* residuum of current iteration */
     double maxResiduum; /* maximum residuum value of a slave in iteration */
 
+    int itterToStopAt; // bei term_prec die itteration bei der wir stopen wollen
+
+    MPI_Request maxResRequest;
+    MPI_Request topRowRequest;
+    MPI_Request bottomRowRequest;
+
     int flag = 0; // flag for stoping using iprobe with precision
     MPI_Status status; // status for iprobe
     int sentStopAlready = 0; // last rank send stop message only once
@@ -296,7 +306,14 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
             // send first real line of just calculated matrix out
             // to rank - 1
             // tag = sender (rank)
-            MPI_Send(Matrix_In[1], N + 1, MPI_DOUBLE, rank - 1, rank, MPI_COMM_WORLD);
+
+            if (results->stat_iteration > 0 && !sentStopAlready)
+            {
+                MPI_Wait(&topRowRequest,MPI_STATUS_IGNORE);
+            }
+
+            MPI_Isend(Matrix_In[1], N + 1, MPI_DOUBLE, rank - 1, rank, MPI_COMM_WORLD,&topRowRequest);
+
           }
 
             double fpisin_i = 0.0;
@@ -328,14 +345,23 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
             // und ist nicht der letzte rank (da der nichts runter sendet)
             if (i == arguments->numberOfRows && rank != nprocs - 1)
             {
+
+
+              if (results->stat_iteration > 0 && !sentStopAlready)
+              {
+                  MPI_Wait(&bottomRowRequest,MPI_STATUS_IGNORE);
+                  MPI_Wait(&maxResRequest,MPI_STATUS_IGNORE);
+              }
+
+
               // sende letzte echte row  einen rank runter
               // sent to: rank + 1 // tag: rank + 1
-              MPI_Send(Matrix_In[arguments->numberOfRows], arguments->N+1 , MPI_DOUBLE, rank + 1, rank + 1, MPI_COMM_WORLD);
+              MPI_Isend(Matrix_In[arguments->numberOfRows], arguments->N+1 , MPI_DOUBLE, rank + 1, rank + 1, MPI_COMM_WORLD,&bottomRowRequest);
 
               // sende maxResiduum and rank + 1
               // tag ist rank + 2
-              MPI_Send(&maxResiduum,1,MPI_DOUBLE,rank + 1, rank + 2,MPI_COMM_WORLD);
-          
+              MPI_Isend(&maxResiduum,1,MPI_DOUBLE,rank + 1, rank + 2,MPI_COMM_WORLD,&maxResRequest);
+
               // warte auf erste berechnete row in dem darunter berechnetem rank
               MPI_Recv(Matrix_In[arguments->numberOfRows + 1], arguments->N+1 , MPI_DOUBLE, rank + 1,rank + 1,MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
@@ -354,24 +380,29 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
         {
             term_iteration--;
         }
-        
+
         /* check for stopping calculation depending on termination method */
         if (options->termination == TERM_PREC)
-        {   // wenn letzter rank dann check abbruch
+        {   // wenn noch nicnt stop sentStopAlready
             if (!sentStopAlready)
             {
+              // wenn letzter rank dann check abbruch
             if (rank == nprocs - 1) {
               if (maxResiduum < options->term_precision)
               {
-                int send = 1;
+                //itteration when to stop
+                int send = results->stat_iteration + rank;
+                itterToStopAt = send;
+
+                //printf("last rank sends in itter %d so we send  %d\n", results->stat_iteration,send);
                 // send a 1 to all ranks
                 for (int allranks = 0; allranks < nprocs - 1; allranks++) {
                   MPI_Send(&send, 1, MPI_INT, allranks , nprocs, MPI_COMM_WORLD);
-                  term_iteration = rank;
                   sentStopAlready = 1;
                 }
               }
             }
+
             else
             {
               //flag =  0 = not done / 1 = done
@@ -382,15 +413,36 @@ calculateGS (struct calculation_arguments const* arguments, struct calculation_r
               MPI_Iprobe(nprocs - 1,nprocs,MPI_COMM_WORLD,&flag,&status);
               if (flag)
               {
-                term_iteration = rank;
+                MPI_Recv(&itterToStopAt, 1 , MPI_INT, nprocs - 1,nprocs,MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                //printf("Rank %d recieves stop in itter %d\n",rank,results->stat_iteration);
+                //printf("Rank %d will stop at %d \n",rank , itterToStopAt );
                 sentStopAlready = 1;
               }
             }
             }
+            else // wissen schon bis zu welcher itter wir wollen
+            {
+              //printf("Rank %d chekt ob abbruch\n",rank );
+              if (results->stat_iteration == itterToStopAt)
+              {
+              //  printf("Rank %d abbruch\n",rank );
+                  term_iteration = 0;
+              }
+            }
 
         }
-
+/*
+        if (sentStopAlready && term_iteration == 0 && rank == nprocs - 2)
+        {
+          printf("rank %d waits one last time \n",rank );
+          MPI_Wait(&bottomRowRequest,MPI_STATUS_IGNORE);
+          MPI_Wait(&maxResRequest,MPI_STATUS_IGNORE);
+          printf("rank %d FERTIG UND DARF RAUS\n",rank );
+        }
+*/
     }
+
+  //  printf("rank %d aus while raus\n",rank );
 
     if (nprocs > 1)
     {
@@ -673,15 +725,14 @@ main (int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // prozess 0 macht die eingabe
-    if(rank==0)
-    {
-    	askParams(&options, argc, argv);
-    }
-    
-    /* 
-    HIER FEHLT NOCH DER CHECK OB ES GEKLAPPT HAT, ABER askparams HAT 
-    KEINEN RETURN, DAHER WEISS ICH NOCH NICHT WIE DAS ZU LOESEN IST OHNE 
-    QUASI DIE GESAMTE INPUTVALIDATION AUS askparams.c HIER HIN ZU KOPIEREN 
+
+    	askParams(&options, argc, argv,rank);
+
+
+    /*
+    HIER FEHLT NOCH DER CHECK OB ES GEKLAPPT HAT, ABER askparams HAT
+    KEINEN RETURN, DAHER WEISS ICH NOCH NICHT WIE DAS ZU LOESEN IST OHNE
+    QUASI DIE GESAMTE INPUTVALIDATION AUS askparams.c HIER HIN ZU KOPIEREN
     */
     // abbrechen, falls die eingabe nicht klappt
     MPI_Bcast(&valid_input, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -691,16 +742,6 @@ main (int argc, char** argv)
     	exit(1);
     }
 
-    // die eigentliche eingabe an die anderen prozesse senden
-    MPI_Bcast(&options.number, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&options.method, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&options.interlines, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&options.inf_func, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&options.termination, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&options.term_iteration, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&options.term_precision, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    
     initVariables(&arguments, &results, &options);
     allocateMatrices(&arguments, &options);
     initMatrices(&arguments, &options);
